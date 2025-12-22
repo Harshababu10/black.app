@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 import os
-import plotly.express as px
 
 # =================================================
 # PAGE CONFIG
@@ -94,7 +93,7 @@ df = pd.DataFrame(records, columns=[
 ])
 
 # =================================================
-# NORMALIZE GENRES (KEY FIX)
+# NORMALIZE GENRES
 # =================================================
 df["GenreList"] = df["Genre"].str.split(", ")
 
@@ -125,31 +124,27 @@ c3.metric("Avg Rating", round(df["UserRating"].mean(), 2))
 c4.metric("Avg Watch Time", int(df["WatchTime"].mean()))
 
 # =================================================
-# GENRE POPULARITY (USER BEHAVIOUR BASED)
+# SIMPLE GENRE POPULARITY (CLEAR OUTPUT)
 # =================================================
-st.subheader("🎭 Genre Popularity (Based on User Behaviour)")
+st.subheader("🎭 Genre Popularity (Simple)")
 
-genre_counts = (
-    df.explode("GenreList")
-      .groupby("GenreList")
-      .size()
-      .reset_index(name="Views")
-      .sort_values("Views", ascending=False)
+genre_popularity = (
+    df.explode("GenreList")["GenreList"]
+      .value_counts()
+      .reset_index()
 )
 
-st.plotly_chart(
-    px.bar(
-        genre_counts,
-        x="GenreList",
-        y="Views",
-        labels={"GenreList": "Genre"},
-        title="Most Watched Genres by Users"
-    ),
-    use_container_width=True
+genre_popularity.columns = ["Genre", "TotalViews"]
+
+st.dataframe(genre_popularity, use_container_width=True)
+st.bar_chart(genre_popularity.set_index("Genre"))
+
+st.caption(
+    "Genres are split first. Each watch is counted. Higher bar = more user interest."
 )
 
 # =================================================
-# USER BEHAVIOUR ANALYSIS
+# USER BEHAVIOUR ANALYSIS (TABLE)
 # =================================================
 st.subheader("👤 User Behaviour Analysis")
 
@@ -168,26 +163,26 @@ user_behaviour = (
 st.dataframe(user_behaviour, use_container_width=True)
 
 # =================================================
-# USER vs GENRE INTERACTION (BEHAVIOUR CHANGE)
+# SIMPLE USER BEHAVIOUR CHANGE (VERY EASY)
 # =================================================
-st.subheader("📊 User Behaviour Change Across Genres")
+st.subheader("📊 User Favourite Genre (Behaviour Result)")
 
-user_genre_matrix = (
+user_fav_genre = (
     df.explode("GenreList")
       .groupby(["UserID", "GenreList"])
       .size()
       .reset_index(name="WatchCount")
 )
 
-st.plotly_chart(
-    px.bar(
-        user_genre_matrix,
-        x="UserID",
-        y="WatchCount",
-        color="GenreList",
-        title="User vs Genre Watch Pattern"
-    ),
-    use_container_width=True
+user_fav_genre = user_fav_genre.loc[
+    user_fav_genre.groupby("UserID")["WatchCount"].idxmax()
+]
+
+st.dataframe(user_fav_genre, use_container_width=True)
+st.bar_chart(user_fav_genre.set_index("UserID")[["WatchCount"]])
+
+st.caption(
+    "For each user, the most watched genre is selected as final behaviour."
 )
 
 # =================================================
@@ -262,10 +257,10 @@ if movie_input:
 # =================================================
 st.markdown("""
 ## ✅ Project Summary
-✔ Genres normalized correctly  
-✔ User behaviour calculated logically  
-✔ No repeating genres in graphs  
-✔ User-based & movie-based recommendations  
+✔ Genres split and counted correctly  
+✔ User behaviour derived logically  
+✔ Simple graphs for easy understanding  
+✔ Clear recommendation system  
 
-🎓 **Perfect for Lab Exam, Viva & GitHub Project**
+🎓 **Ideal for Lab Exam, Viva & Project Submission**
 """)
