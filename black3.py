@@ -52,14 +52,14 @@ num_movies = st.sidebar.slider(
 movies = movies.head(num_movies)
 
 # =================================================
-# USER PREFERENCE MODEL
+# USER PREFERENCE MODEL (IMPROVED)
 # =================================================
 user_preferences = {
     "U01": ["Drama"],
     "U02": ["Action", "Adventure"],
     "U03": ["Comedy"],
     "U04": ["Thriller", "Mystery"],
-    "U05": ["Romance"]
+    "U05": ["Romance", "Drama", "Comedy"]  # fallback genres added
 }
 
 np.random.seed(42)
@@ -67,22 +67,37 @@ records = []
 dates = pd.date_range("2024-01-01", "2024-06-30")
 
 for user, genres in user_preferences.items():
+
+    # Step 1: Get preferred genre movies
     preferred_movies = movies[
         movies["Genre"].str.contains("|".join(genres), case=False, na=False)
     ]
 
+    # Step 2: If still less, sample with replacement (only similar genres)
     if len(preferred_movies) < 60:
-        preferred_movies = movies.sample(60, replace=False)
+        preferred_movies = preferred_movies.sample(
+            n=60, replace=True
+        )
     else:
-        preferred_movies = preferred_movies.sample(60, replace=False)
+        preferred_movies = preferred_movies.sample(
+            n=60, replace=False
+        )
 
+    # Step 3: Generate interactions
     for _, row in preferred_movies.iterrows():
+
+        # Preference-based rating
+        if any(g.lower() in row["Genre"].lower() for g in genres):
+            rating = np.random.randint(4, 6)  # 4–5 for liked genres
+        else:
+            rating = np.random.randint(2, 4)  # 2–3 otherwise
+
         records.append([
             user,
             row["MovieID"],
             row["MovieName"],
             row["Genre"],
-            5,
+            rating,                         # ⭐ different ratings
             np.random.randint(60, 180),
             np.random.choice(dates)
         ])
@@ -257,8 +272,9 @@ if movie_input:
 # =================================================
 st.markdown("""
 ## ✅ Project Summary
+✔ Ratings vary based on user preferences  
+✔ User 5 gets more Romance (or similar genres)  
 ✔ Genres split and counted correctly  
-✔ User behaviour derived logically  
 ✔ Simple graphs for easy understanding  
 ✔ Clear recommendation system  
 
