@@ -52,14 +52,14 @@ num_movies = st.sidebar.slider(
 movies = movies.head(num_movies)
 
 # =================================================
-# USER PREFERENCE MODEL (IMPROVED)
+# USER PREFERENCE MODEL (UPDATED)
 # =================================================
 user_preferences = {
     "U01": ["Drama"],
     "U02": ["Action", "Adventure"],
     "U03": ["Comedy"],
-    "U04": ["Thriller", "Mystery"],
-    "U05": ["Romance", "Drama", "Comedy"]  # fallback genres added
+    "U04": ["Crime", "Mystery"],       # Updated: Thriller -> Crime
+    "U05": ["Fantasy", "Drama", "Comedy"]  # Updated: Romance -> Fantasy
 }
 
 np.random.seed(42)
@@ -273,7 +273,8 @@ if movie_input:
 st.markdown("""
 ## ✅ Project Summary
 ✔ Ratings vary based on user preferences  
-✔ User 5 gets more Romance (or similar genres)  
+✔ User 4 prefers Crime & Mystery  
+✔ User 5 prefers Fantasy (fallback Drama/Comedy)  
 ✔ Genres split and counted correctly  
 ✔ Simple graphs for easy understanding  
 ✔ Clear recommendation system  
