@@ -39,21 +39,21 @@ movies["BaseRating"] = pd.to_numeric(movies["BaseRating"], errors="coerce")
 movies = movies.dropna()
 
 # =================================================
-# SIDEBAR CONTROL
+# SIDEBAR CONTROL (USE ALL 500 MOVIES)
 # =================================================
 st.sidebar.header("🎛 Controls")
 
 num_movies = st.sidebar.slider(
     "Movies to analyze",
     100,
-    min(500, len(movies)),
-    300
+    len(movies),
+    500
 )
 
-movies = movies.head(num_movies)
+movies = movies.sample(num_movies, random_state=42)
 
 # =================================================
-# USER PREFERENCE MODEL (KEY FIX)
+# USER PREFERENCE MODEL
 # =================================================
 user_preferences = {
     "U01": ["Drama"],
@@ -63,6 +63,9 @@ user_preferences = {
     "U05": ["Romance"]
 }
 
+# =================================================
+# SYNTHETIC USER INTERACTION DATA
+# =================================================
 np.random.seed(42)
 records = []
 dates = pd.date_range("2024-01-01", "2024-06-30")
@@ -70,20 +73,21 @@ dates = pd.date_range("2024-01-01", "2024-06-30")
 for user, genres in user_preferences.items():
     preferred_movies = movies[
         movies["Genre"].str.contains("|".join(genres), case=False, na=False)
-    ]
-
-    if len(preferred_movies) < 60:
-        preferred_movies = movies.sample(60, replace=False)
-    else:
-        preferred_movies = preferred_movies.sample(60, replace=False)
+    ].sample(60, random_state=42)
 
     for _, row in preferred_movies.iterrows():
+        rating = np.clip(
+            round(row["BaseRating"] + np.random.normal(0, 0.4), 1),
+            1,
+            5
+        )
+
         records.append([
             user,
             row["MovieID"],
             row["MovieName"],
             row["Genre"],
-            5,
+            rating,
             np.random.randint(60, 180),
             np.random.choice(dates)
         ])
@@ -116,8 +120,40 @@ st.subheader("📌 Platform Overview")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Users", df["UserID"].nunique())
 c2.metric("Movies Watched", df["MovieName"].nunique())
-c3.metric("Avg Rating", df["UserRating"].mean())
+c3.metric("Avg Rating", round(df["UserRating"].mean(), 2))
 c4.metric("Avg Watch Time", int(df["WatchTime"].mean()))
+
+# =================================================
+# USER WATCH TIME GRAPH (REQUESTED)
+# =================================================
+st.subheader("⏱ User Watch Time Analysis")
+
+watch_time_user = df.groupby("UserID")["WatchTime"].mean().reset_index()
+
+st.plotly_chart(
+    px.bar(
+        watch_time_user,
+        x="UserID",
+        y="WatchTime",
+        title="Average Watch Time per User (minutes)"
+    ),
+    use_container_width=True
+)
+
+# =================================================
+# USER RATING DISTRIBUTION
+# =================================================
+st.subheader("⭐ User Rating Distribution")
+
+st.plotly_chart(
+    px.histogram(
+        df,
+        x="UserRating",
+        nbins=10,
+        title="Distribution of User Ratings"
+    ),
+    use_container_width=True
+)
 
 # =================================================
 # GENRE POPULARITY
@@ -134,14 +170,19 @@ genre_counts = (
 genre_counts.columns = ["Genre", "Count"]
 
 st.plotly_chart(
-    px.bar(genre_counts, x="Genre", y="Count"),
+    px.bar(
+        genre_counts.sort_values("Count", ascending=False),
+        x="Genre",
+        y="Count",
+        title="Most Watched Genres"
+    ),
     use_container_width=True
 )
 
 # =================================================
-# USER BEHAVIOUR
+# USER BEHAVIOUR TABLE
 # =================================================
-st.subheader("👤 User Behaviour")
+st.subheader("👤 User Behaviour Summary")
 
 user_behaviour = df.groupby("UserID").agg(
     MoviesWatched=("MovieName", "count"),
@@ -153,6 +194,23 @@ user_behaviour = df.groupby("UserID").agg(
 )
 
 st.dataframe(user_behaviour, use_container_width=True)
+
+# =================================================
+# AVERAGE RATING PER USER GRAPH
+# =================================================
+st.subheader("📊 Average Rating per User")
+
+avg_rating_user = df.groupby("UserID")["UserRating"].mean().reset_index()
+
+st.plotly_chart(
+    px.bar(
+        avg_rating_user,
+        x="UserID",
+        y="UserRating",
+        title="Average Rating Given by Each User"
+    ),
+    use_container_width=True
+)
 
 # =================================================
 # USER-BASED RECOMMENDATION
@@ -189,7 +247,7 @@ st.dataframe(
 )
 
 # =================================================
-# MOVIE-BASED RECOMMENDATION (USER INPUT)
+# MOVIE-BASED RECOMMENDATION
 # =================================================
 st.subheader("🔍 Movie-Based Recommendation")
 
@@ -226,10 +284,9 @@ if movie_input:
 # =================================================
 st.markdown("""
 ## ✅ Project Summary
-✔ Logical user preferences  
-✔ Meaningful recommendations  
-✔ User-based + Movie-based filtering  
-✔ Suitable for **lab exam, viva & GitHub**  
-
-🎓 **Industry-style recommendation system**
+✔ Uses all 500 movies  
+✔ Visible watch-time & rating analysis  
+✔ Realistic user behavior modeling  
+✔ User-based & movie-based recommendations  
+✔ Suitable for **lab exam, viva & GitHub**
 """)
