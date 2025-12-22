@@ -53,7 +53,7 @@ num_movies = st.sidebar.slider(
 movies = movies.head(num_movies)
 
 # =================================================
-# USER PREFERENCE MODEL (KEY FIX)
+# USER PREFERENCE MODEL
 # =================================================
 user_preferences = {
     "U01": ["Drama"],
@@ -94,6 +94,11 @@ df = pd.DataFrame(records, columns=[
 ])
 
 # =================================================
+# NORMALIZE GENRES (KEY FIX)
+# =================================================
+df["GenreList"] = df["Genre"].str.split(", ")
+
+# =================================================
 # USER–MOVIE DATA VIEW
 # =================================================
 st.subheader("📂 User–Movie Interaction Data")
@@ -116,43 +121,74 @@ st.subheader("📌 Platform Overview")
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Users", df["UserID"].nunique())
 c2.metric("Movies Watched", df["MovieName"].nunique())
-c3.metric("Avg Rating", df["UserRating"].mean())
+c3.metric("Avg Rating", round(df["UserRating"].mean(), 2))
 c4.metric("Avg Watch Time", int(df["WatchTime"].mean()))
 
 # =================================================
-# GENRE POPULARITY
+# GENRE POPULARITY (USER BEHAVIOUR BASED)
 # =================================================
-st.subheader("🎭 Genre Popularity")
+st.subheader("🎭 Genre Popularity (Based on User Behaviour)")
 
 genre_counts = (
-    df["Genre"]
-    .str.split(", ")
-    .explode()
-    .value_counts()
-    .reset_index()
+    df.explode("GenreList")
+      .groupby("GenreList")
+      .size()
+      .reset_index(name="Views")
+      .sort_values("Views", ascending=False)
 )
-genre_counts.columns = ["Genre", "Count"]
 
 st.plotly_chart(
-    px.bar(genre_counts, x="Genre", y="Count"),
+    px.bar(
+        genre_counts,
+        x="GenreList",
+        y="Views",
+        labels={"GenreList": "Genre"},
+        title="Most Watched Genres by Users"
+    ),
     use_container_width=True
 )
 
 # =================================================
-# USER BEHAVIOUR
+# USER BEHAVIOUR ANALYSIS
 # =================================================
-st.subheader("👤 User Behaviour")
+st.subheader("👤 User Behaviour Analysis")
 
-user_behaviour = df.groupby("UserID").agg(
-    MoviesWatched=("MovieName", "count"),
-    AvgRating=("UserRating", "mean"),
-    AvgWatchTime=("WatchTime", "mean"),
-    FavoriteGenre=("Genre", lambda x:
-        x.str.split(", ").explode().value_counts().idxmax()
-    )
+user_behaviour = (
+    df.explode("GenreList")
+      .groupby("UserID")
+      .agg(
+          MoviesWatched=("MovieID", "count"),
+          AvgRating=("UserRating", "mean"),
+          AvgWatchTime=("WatchTime", "mean"),
+          FavoriteGenre=("GenreList", lambda x: x.value_counts().idxmax())
+      )
+      .reset_index()
 )
 
 st.dataframe(user_behaviour, use_container_width=True)
+
+# =================================================
+# USER vs GENRE INTERACTION (BEHAVIOUR CHANGE)
+# =================================================
+st.subheader("📊 User Behaviour Change Across Genres")
+
+user_genre_matrix = (
+    df.explode("GenreList")
+      .groupby(["UserID", "GenreList"])
+      .size()
+      .reset_index(name="WatchCount")
+)
+
+st.plotly_chart(
+    px.bar(
+        user_genre_matrix,
+        x="UserID",
+        y="WatchCount",
+        color="GenreList",
+        title="User vs Genre Watch Pattern"
+    ),
+    use_container_width=True
+)
 
 # =================================================
 # USER-BASED RECOMMENDATION
@@ -167,9 +203,7 @@ selected_user = st.selectbox(
 user_df = df[df["UserID"] == selected_user]
 
 fav_genre = (
-    user_df["Genre"]
-    .str.split(", ")
-    .explode()
+    user_df.explode("GenreList")["GenreList"]
     .value_counts()
     .idxmax()
 )
@@ -179,7 +213,7 @@ st.success(f"🎯 Favorite Genre: {fav_genre}")
 watched_movies = set(user_df["MovieID"])
 
 user_recommendations = movies[
-    movies["Genre"].str.contains(fav_genre, case=False) &
+    movies["Genre"].str.contains(fav_genre, case=False, na=False) &
     (~movies["MovieID"].isin(watched_movies))
 ].head(7)
 
@@ -189,7 +223,7 @@ st.dataframe(
 )
 
 # =================================================
-# MOVIE-BASED RECOMMENDATION (USER INPUT)
+# MOVIE-BASED RECOMMENDATION
 # =================================================
 st.subheader("🔍 Movie-Based Recommendation")
 
@@ -209,8 +243,10 @@ if movie_input:
         st.info(f"🎭 Genre: {movie['Genre']}")
         st.info(f"⭐ Rating: {movie['BaseRating']}")
 
+        main_genre = movie["Genre"].split(",")[0]
+
         similar = movies[
-            (movies["Genre"].str.contains(movie["Genre"].split(",")[0], case=False)) &
+            movies["Genre"].str.contains(main_genre, case=False, na=False) &
             (movies["BaseRating"] >= movie["BaseRating"] - 0.5) &
             (movies["MovieID"] != movie["MovieID"])
         ].sort_values("BaseRating", ascending=False).head(10)
@@ -226,10 +262,10 @@ if movie_input:
 # =================================================
 st.markdown("""
 ## ✅ Project Summary
-✔ Logical user preferences  
-✔ Meaningful recommendations  
-✔ User-based + Movie-based filtering  
-✔ Suitable for **lab exam, viva & GitHub**  
+✔ Genres normalized correctly  
+✔ User behaviour calculated logically  
+✔ No repeating genres in graphs  
+✔ User-based & movie-based recommendations  
 
-🎓 **Industry-style recommendation system**
+🎓 **Perfect for Lab Exam, Viva & GitHub Project**
 """)
