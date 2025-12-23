@@ -270,14 +270,3 @@ if movie_input:
 # =================================================
 # CONCLUSION
 # =================================================
-st.markdown("""
-## ✅ Project Summary
-✔ Ratings vary based on user preferences  
-✔ User 4 prefers Crime & Mystery  
-✔ User 5 prefers Fantasy (fallback Drama/Comedy)  
-✔ Genres split and counted correctly  
-✔ Simple graphs for easy understanding  
-✔ Clear recommendation system  
-
-🎓 **Ideal for Lab Exam, Viva & Project Submission**
-""")
