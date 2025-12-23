@@ -66,7 +66,7 @@ np.random.seed(42)
 records = []
 dates = pd.date_range("2024-01-01", "2024-06-30")
 
-movies_per_user = num_movies // len(user_preferences)  # 100 each
+movies_per_user = num_movies // len(user_preferences)
 
 for user, genres in user_preferences.items():
 
@@ -152,23 +152,47 @@ user_behaviour = (
 st.dataframe(user_behaviour, use_container_width=True)
 
 # =================================================
-# USER-BASED RECOMMENDATION (GRAPH-BASED)
+# ✅ NEW FEATURE 1: USER ACTIVITY BAR CHART
+# =================================================
+st.subheader("📊 User Activity Overview")
+
+user_activity = (
+    df.groupby("UserID")["MovieID"]
+    .count()
+    .reset_index(name="MoviesWatched")
+)
+
+st.bar_chart(user_activity.set_index("UserID"))
+
+# =================================================
+# ✅ NEW FEATURE 2: USER-BASED RECOMMENDATION (SELECT USER)
 # =================================================
 st.subheader("🎯 User-Based Recommendation")
 
-fav_genre = genre_popularity.iloc[0]["Genre"]
-st.success(f"🎯 Recommended Based on Popular Genre: {fav_genre}")
+selected_user = st.selectbox(
+    "Select User",
+    df["UserID"].unique()
+)
 
-user_recommendations = (
+user_fav_genre = (
+    df[df["UserID"] == selected_user]
+    .explode("GenreList")["GenreList"]
+    .value_counts()
+    .idxmax()
+)
+
+st.success(f"💖 Favorite Genre: {user_fav_genre}")
+
+personalized_recommendations = (
     movies[
-        movies["Genre"].str.contains(fav_genre, case=False, na=False)
+        movies["Genre"].str.contains(user_fav_genre, case=False, na=False)
     ]
     .sort_values("BaseRating", ascending=False)
     .head(7)
 )
 
 st.dataframe(
-    user_recommendations[["MovieName", "Genre", "BaseRating"]],
+    personalized_recommendations[["MovieName", "Genre", "BaseRating"]],
     use_container_width=True
 )
 
