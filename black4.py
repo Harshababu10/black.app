@@ -46,27 +46,33 @@ num_movies = st.sidebar.slider(
     "Movies to analyze",
     100,
     min(500, len(movies)),
-    300
+    500
 )
 
 movies = movies.head(num_movies)
 
 # =================================================
-# USER PREFERENCE MODEL (SINGLE USER)
+# USER PREFERENCE MODEL (5 USERS, EQUAL SPLIT)
 # =================================================
 user_preferences = {
-    "U01": ["Drama"]
+    "U01": ["Drama"],
+    "U02": ["Action"],
+    "U03": ["Comedy"],
+    "U04": ["Thriller"],
+    "U05": ["Romance"]
 }
 
 np.random.seed(42)
 records = []
 dates = pd.date_range("2024-01-01", "2024-06-30")
 
+movies_per_user = num_movies // len(user_preferences)  # 100 each
+
 for user, genres in user_preferences.items():
 
     preferred_movies = movies[
         movies["Genre"].str.contains("|".join(genres), case=False, na=False)
-    ]
+    ].head(movies_per_user)
 
     for _, row in preferred_movies.iterrows():
         records.append([
@@ -85,7 +91,7 @@ df = pd.DataFrame(records, columns=[
 ])
 
 # =================================================
-# NORMALIZE GENRES (FIXED ✅)
+# NORMALIZE GENRES (NO DUPLICATES ✅)
 # =================================================
 df["GenreList"] = (
     df["Genre"]
@@ -106,12 +112,12 @@ st.subheader("📌 Platform Overview")
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric("Users", df["UserID"].nunique())
-c2.metric("Movies Watched", df["MovieName"].nunique())
+c2.metric("Movies Watched", df["MovieID"].nunique())
 c3.metric("Avg Rating", round(df["UserRating"].mean(), 2))
 c4.metric("Avg Watch Time", int(df["WatchTime"].mean()))
 
 # =================================================
-# GENRE POPULARITY (NO DUPLICATES)
+# GENRE POPULARITY
 # =================================================
 st.subheader("🎭 Genre Popularity")
 
@@ -146,12 +152,11 @@ user_behaviour = (
 st.dataframe(user_behaviour, use_container_width=True)
 
 # =================================================
-# USER-BASED RECOMMENDATION (GRAPH-BASED ✔)
+# USER-BASED RECOMMENDATION (GRAPH-BASED)
 # =================================================
 st.subheader("🎯 User-Based Recommendation")
 
 fav_genre = genre_popularity.iloc[0]["Genre"]
-
 st.success(f"🎯 Recommended Based on Popular Genre: {fav_genre}")
 
 user_recommendations = (
