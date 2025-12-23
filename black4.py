@@ -69,15 +69,12 @@ for user, genres in user_preferences.items():
     ]
 
     for _, row in preferred_movies.iterrows():
-
-        rating = np.random.randint(4, 6)
-
         records.append([
             user,
             row["MovieID"],
             row["MovieName"],
             row["Genre"],
-            rating,
+            np.random.randint(4, 6),
             np.random.randint(60, 180),
             np.random.choice(dates)
         ])
@@ -88,9 +85,13 @@ df = pd.DataFrame(records, columns=[
 ])
 
 # =================================================
-# NORMALIZE GENRES
+# NORMALIZE GENRES (FIXED ✅)
 # =================================================
-df["GenreList"] = df["Genre"].str.split(", ")
+df["GenreList"] = (
+    df["Genre"]
+    .str.split(",")
+    .apply(lambda x: [g.strip().title() for g in x])
+)
 
 # =================================================
 # USER–MOVIE DATA VIEW
@@ -110,7 +111,7 @@ c3.metric("Avg Rating", round(df["UserRating"].mean(), 2))
 c4.metric("Avg Watch Time", int(df["WatchTime"].mean()))
 
 # =================================================
-# GENRE POPULARITY
+# GENRE POPULARITY (NO DUPLICATES)
 # =================================================
 st.subheader("🎭 Genre Popularity")
 
@@ -149,16 +150,10 @@ st.dataframe(user_behaviour, use_container_width=True)
 # =================================================
 st.subheader("🎯 User-Based Recommendation")
 
-# Favorite genre derived from Genre Popularity graph
-fav_genre = (
-    df.explode("GenreList")["GenreList"]
-    .value_counts()
-    .idxmax()
-)
+fav_genre = genre_popularity.iloc[0]["Genre"]
 
 st.success(f"🎯 Recommended Based on Popular Genre: {fav_genre}")
 
-# Recommend TOP-RATED movies from popular genre
 user_recommendations = (
     movies[
         movies["Genre"].str.contains(fav_genre, case=False, na=False)
@@ -193,7 +188,7 @@ if movie_input:
         st.info(f"🎭 Genre: {movie['Genre']}")
         st.info(f"⭐ Rating: {movie['BaseRating']}")
 
-        main_genre = movie["Genre"].split(",")[0]
+        main_genre = movie["Genre"].split(",")[0].strip()
 
         similar = movies[
             movies["Genre"].str.contains(main_genre, case=False, na=False) &
