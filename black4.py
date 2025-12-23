@@ -52,10 +52,10 @@ num_movies = st.sidebar.slider(
 movies = movies.head(num_movies)
 
 # =================================================
-# USER PREFERENCE MODEL (ONLY ONE USER)
+# USER PREFERENCE MODEL (SINGLE USER)
 # =================================================
 user_preferences = {
-    "U01": ["Drama"]   # ✅ SINGLE USER
+    "U01": ["Drama"]
 }
 
 np.random.seed(42)
@@ -68,11 +68,7 @@ for user, genres in user_preferences.items():
         movies["Genre"].str.contains("|".join(genres), case=False, na=False)
     ]
 
-    if len(preferred_movies) < 60:
-        preferred_movies = preferred_movies.sample(n=60, replace=True)
-    else:
-        preferred_movies = preferred_movies.sample(n=60, replace=False)
-
+    # ✅ USE ALL MOVIES (NO 60 MOVIE LIMIT)
     for _, row in preferred_movies.iterrows():
 
         if any(g.lower() in row["Genre"].lower() for g in genres):
@@ -124,8 +120,8 @@ st.subheader("🎭 Genre Popularity")
 
 genre_popularity = (
     df.explode("GenreList")["GenreList"]
-      .value_counts()
-      .reset_index()
+    .value_counts()
+    .reset_index()
 )
 
 genre_popularity.columns = ["Genre", "TotalViews"]
@@ -140,14 +136,14 @@ st.subheader("👤 User Behaviour Analysis")
 
 user_behaviour = (
     df.explode("GenreList")
-      .groupby("UserID")
-      .agg(
-          MoviesWatched=("MovieID", "count"),
-          AvgRating=("UserRating", "mean"),
-          AvgWatchTime=("WatchTime", "mean"),
-          FavoriteGenre=("GenreList", lambda x: x.value_counts().idxmax())
-      )
-      .reset_index()
+    .groupby("UserID")
+    .agg(
+        MoviesWatched=("MovieID", "count"),
+        AvgRating=("UserRating", "mean"),
+        AvgWatchTime=("WatchTime", "mean"),
+        FavoriteGenre=("GenreList", lambda x: x.value_counts().idxmax())
+    )
+    .reset_index()
 )
 
 st.dataframe(user_behaviour, use_container_width=True)
@@ -158,7 +154,6 @@ st.dataframe(user_behaviour, use_container_width=True)
 st.subheader("🎯 User-Based Recommendation")
 
 selected_user = "U01"
-
 user_df = df[df["UserID"] == selected_user]
 
 fav_genre = (
