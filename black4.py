@@ -52,14 +52,10 @@ num_movies = st.sidebar.slider(
 movies = movies.head(num_movies)
 
 # =================================================
-# USER PREFERENCE MODEL
+# USER PREFERENCE MODEL (ONLY ONE USER)
 # =================================================
 user_preferences = {
-    "U01": ["Drama"],
-    "U02": ["Action", "Adventure"],
-    "U03": ["Comedy"],
-    "U04": ["Crime", "Mystery"],
-    "U05": ["Fantasy", "Drama", "Comedy"]
+    "U01": ["Drama"]   # ✅ SINGLE USER
 }
 
 np.random.seed(42)
@@ -100,26 +96,15 @@ df = pd.DataFrame(records, columns=[
 ])
 
 # =================================================
-# NORMALIZE GENRES (IMPORTANT)
+# NORMALIZE GENRES
 # =================================================
-df["GenreList"] = df["Genre"].str.split(",")
-df = df.explode("GenreList")
-df["GenreList"] = df["GenreList"].str.strip().str.title()
+df["GenreList"] = df["Genre"].str.split(", ")
 
 # =================================================
 # USER–MOVIE DATA VIEW
 # =================================================
 st.subheader("📂 User–Movie Interaction Data")
-
-view_user = st.selectbox(
-    "View interactions",
-    ["All"] + list(user_preferences.keys())
-)
-
-if view_user == "All":
-    st.dataframe(df.head(50), use_container_width=True)
-else:
-    st.dataframe(df[df["UserID"] == view_user], use_container_width=True)
+st.dataframe(df, use_container_width=True)
 
 # =================================================
 # KPI METRICS
@@ -138,9 +123,9 @@ c4.metric("Avg Watch Time", int(df["WatchTime"].mean()))
 st.subheader("🎭 Genre Popularity")
 
 genre_popularity = (
-    df["GenreList"]
-    .value_counts()
-    .reset_index()
+    df.explode("GenreList")["GenreList"]
+      .value_counts()
+      .reset_index()
 )
 
 genre_popularity.columns = ["Genre", "TotalViews"]
@@ -154,7 +139,8 @@ st.bar_chart(genre_popularity.set_index("Genre"))
 st.subheader("👤 User Behaviour Analysis")
 
 user_behaviour = (
-    df.groupby("UserID")
+    df.explode("GenreList")
+      .groupby("UserID")
       .agg(
           MoviesWatched=("MovieID", "count"),
           AvgRating=("UserRating", "mean"),
@@ -167,47 +153,16 @@ user_behaviour = (
 st.dataframe(user_behaviour, use_container_width=True)
 
 # =================================================
-# USER PREFERENCE vs OBSERVED BEHAVIOUR (ADDED)
-# =================================================
-st.subheader("🔁 User Preference vs Observed Behaviour")
-
-preference_df = pd.DataFrame([
-    {"UserID": user, "PreferredGenres": ", ".join(genres)}
-    for user, genres in user_preferences.items()
-])
-
-behaviour_df = (
-    df.groupby("UserID")["GenreList"]
-      .agg(lambda x: x.value_counts().idxmax())
-      .reset_index(name="ObservedFavouriteGenre")
-)
-
-comparison_df = pd.merge(
-    preference_df,
-    behaviour_df,
-    on="UserID"
-)
-
-st.dataframe(comparison_df, use_container_width=True)
-
-st.caption(
-    "Preferred genres are assumed interests, while observed favourite genre is derived from actual viewing behaviour."
-)
-
-# =================================================
 # USER-BASED RECOMMENDATION
 # =================================================
 st.subheader("🎯 User-Based Recommendation")
 
-selected_user = st.selectbox(
-    "Select User",
-    list(user_preferences.keys())
-)
+selected_user = "U01"
 
 user_df = df[df["UserID"] == selected_user]
 
 fav_genre = (
-    user_df["GenreList"]
+    user_df.explode("GenreList")["GenreList"]
     .value_counts()
     .idxmax()
 )
@@ -229,4 +184,34 @@ st.dataframe(
 # =================================================
 # MOVIE-BASED RECOMMENDATION
 # =================================================
-st
+st.subheader("🔍 Movie-Based Recommendation")
+
+movie_input = st.text_input("Type a movie name you like")
+
+if movie_input:
+    match = movies[
+        movies["MovieName"].str.contains(movie_input, case=False, na=False)
+    ]
+
+    if match.empty:
+        st.error("❌ Movie not found")
+    else:
+        movie = match.iloc[0]
+
+        st.info(f"🎬 Movie: {movie['MovieName']}")
+        st.info(f"🎭 Genre: {movie['Genre']}")
+        st.info(f"⭐ Rating: {movie['BaseRating']}")
+
+        main_genre = movie["Genre"].split(",")[0]
+
+        similar = movies[
+            movies["Genre"].str.contains(main_genre, case=False, na=False) &
+            (movies["BaseRating"] >= movie["BaseRating"] - 0.5) &
+            (movies["MovieID"] != movie["MovieID"])
+        ].sort_values("BaseRating", ascending=False).head(10)
+
+        st.subheader("🎯 Similar Movies")
+        st.dataframe(
+            similar[["MovieName", "Genre", "BaseRating"]],
+            use_container_width=True
+        )
