@@ -19,10 +19,10 @@ st.caption("Dataset-based Movie Rating & User Behaviour Analysis")
 # =================================================
 # LOAD DATA
 # =================================================
-FILE_NAME = "asta.csv"
+FILE_NAME = "asta1.csv"
 
 if not os.path.exists(FILE_NAME):
-    st.error("❌ asta.csv not found")
+    st.error("❌ asta1.csv not found")
     st.stop()
 
 movies = pd.read_csv(FILE_NAME, encoding="latin1")
@@ -233,3 +233,4 @@ st.markdown("""
 
 🎓 **Industry-style recommendation system**
 """)
+
