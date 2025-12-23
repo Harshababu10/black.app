@@ -68,7 +68,7 @@ for user, genres in user_preferences.items():
         movies["Genre"].str.contains("|".join(genres), case=False, na=False)
     ]
 
-    # ✅ USE ALL MOVIES (NO 60 MOVIE LIMIT)
+    # ✅ ALL MOVIES USED (NO LIMIT)
     for _, row in preferred_movies.iterrows():
 
         if any(g.lower() in row["Genre"].lower() for g in genres):
@@ -149,7 +149,7 @@ user_behaviour = (
 st.dataframe(user_behaviour, use_container_width=True)
 
 # =================================================
-# USER-BASED RECOMMENDATION
+# USER-BASED RECOMMENDATION (FIXED)
 # =================================================
 st.subheader("🎯 User-Based Recommendation")
 
@@ -166,13 +166,22 @@ st.success(f"🎯 Favorite Genre: {fav_genre}")
 
 watched_movies = set(user_df["MovieID"])
 
+# TRY SAME-GENRE FIRST
 user_recommendations = movies[
     movies["Genre"].str.contains(fav_genre, case=False, na=False) &
     (~movies["MovieID"].isin(watched_movies))
-].head(7)
+]
+
+# FALLBACK IF EMPTY
+if user_recommendations.empty:
+    st.warning("⚠️ No unseen movies in favorite genre. Showing top-rated movies.")
+
+    user_recommendations = movies[
+        ~movies["MovieID"].isin(watched_movies)
+    ].sort_values("BaseRating", ascending=False)
 
 st.dataframe(
-    user_recommendations[["MovieName", "Genre", "BaseRating"]],
+    user_recommendations.head(7)[["MovieName", "Genre", "BaseRating"]],
     use_container_width=True
 )
 
