@@ -68,13 +68,9 @@ for user, genres in user_preferences.items():
         movies["Genre"].str.contains("|".join(genres), case=False, na=False)
     ]
 
-    # ✅ ALL MOVIES USED (NO LIMIT)
     for _, row in preferred_movies.iterrows():
 
-        if any(g.lower() in row["Genre"].lower() for g in genres):
-            rating = np.random.randint(4, 6)
-        else:
-            rating = np.random.randint(2, 4)
+        rating = np.random.randint(4, 6)
 
         records.append([
             user,
@@ -149,39 +145,30 @@ user_behaviour = (
 st.dataframe(user_behaviour, use_container_width=True)
 
 # =================================================
-# USER-BASED RECOMMENDATION (FIXED)
+# USER-BASED RECOMMENDATION (GRAPH-BASED ✔)
 # =================================================
 st.subheader("🎯 User-Based Recommendation")
 
-selected_user = "U01"
-user_df = df[df["UserID"] == selected_user]
-
+# Favorite genre derived from Genre Popularity graph
 fav_genre = (
-    user_df.explode("GenreList")["GenreList"]
+    df.explode("GenreList")["GenreList"]
     .value_counts()
     .idxmax()
 )
 
-st.success(f"🎯 Favorite Genre: {fav_genre}")
+st.success(f"🎯 Recommended Based on Popular Genre: {fav_genre}")
 
-watched_movies = set(user_df["MovieID"])
-
-# TRY SAME-GENRE FIRST
-user_recommendations = movies[
-    movies["Genre"].str.contains(fav_genre, case=False, na=False) &
-    (~movies["MovieID"].isin(watched_movies))
-]
-
-# FALLBACK IF EMPTY
-if user_recommendations.empty:
-    st.warning("⚠️ No unseen movies in favorite genre. Showing top-rated movies.")
-
-    user_recommendations = movies[
-        ~movies["MovieID"].isin(watched_movies)
-    ].sort_values("BaseRating", ascending=False)
+# Recommend TOP-RATED movies from popular genre
+user_recommendations = (
+    movies[
+        movies["Genre"].str.contains(fav_genre, case=False, na=False)
+    ]
+    .sort_values("BaseRating", ascending=False)
+    .head(7)
+)
 
 st.dataframe(
-    user_recommendations.head(7)[["MovieName", "Genre", "BaseRating"]],
+    user_recommendations[["MovieName", "Genre", "BaseRating"]],
     use_container_width=True
 )
 
