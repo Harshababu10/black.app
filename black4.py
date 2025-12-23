@@ -135,13 +135,14 @@ st.bar_chart(genre_popularity.set_index("Genre"))
 # =================================================
 # USER BEHAVIOUR ANALYSIS
 # =================================================
+
 st.subheader("👤 User Behaviour Analysis")
 
 user_behaviour = (
     df.explode("GenreList")
     .groupby("UserID")
     .agg(
-        MoviesWatched=("MovieID", "count"),
+        MoviesWatched=("MovieID", "nunique"),   # ✅ FIX HERE
         AvgRating=("UserRating", "mean"),
         AvgWatchTime=("WatchTime", "mean"),
         FavoriteGenre=("GenreList", lambda x: x.value_counts().idxmax())
@@ -230,3 +231,4 @@ if movie_input:
             similar[["MovieName", "Genre", "BaseRating"]],
             use_container_width=True
         )
+
